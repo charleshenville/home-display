@@ -1,0 +1,145 @@
+/*
+   Created by DIYables
+
+   This example code is in the public domain
+
+   Product page:
+   - https://diyables.io/products/3.5-tft-lcd-color-touch-screen-shield-for-arduino-uno-mega-320x480-resolution-ili9488-driver-parallel-8-bit-interface-28pin-module-with-touch
+   - https://www.amazon.com/dp/B0DQ3NQ3LW
+*/
+
+#include <DIYables_TFT_Touch_Shield.h>
+#include "fonts.h"
+#include <string.h>
+
+#define MAGENTA   DIYables_TFT::colorRGB(255, 0, 255)
+#define WHITE     DIYables_TFT::colorRGB(255, 255, 255)
+#define BLACK     DIYables_TFT::colorRGB(0, 0, 0)
+
+DIYables_TFT_ILI9488_Shield TFT_display;
+
+// Current font settings
+sFONT* current_font = &Font24;  // Default font (can change to Font8, Font16, Font20, or Font24)
+uint16_t text_color = WHITE;
+int cursor_x = 0;
+int cursor_y = 0;
+
+// Function to draw a single character using sFONT format
+void drawChar(int x, int y, char c, sFONT* font, uint16_t color) {
+  if (c < 32 || c > 126) return;  // Only printable ASCII
+  
+  // Calculate bytes per row (rounded up to nearest byte)
+  uint16_t bytes_per_row = (font->Width + 7) / 8;
+  if (bytes_per_row == 0) bytes_per_row = 1;
+  
+  // Calculate character index (starting from space = 32)
+  uint8_t char_index = c - 32;
+  
+  // Calculate offset in font table for this character (in bytes)
+  uint32_t char_offset = char_index * font->Height * bytes_per_row;
+  
+  // Draw the character
+  for (uint16_t row = 0; row < font->Height; row++) {
+    uint32_t row_offset = char_offset + row * bytes_per_row;
+    
+    for (uint16_t col = 0; col < font->Width; col++) {
+      bool pixel_set = false;
+      
+      // Calculate which byte and bit within that byte
+      uint16_t byte_index = col / 8;  // Which byte in the row (0, 1, 2, ...)
+      uint8_t bit_in_byte = 7 - (col % 8);  // Bit position within byte (MSB first)
+      
+      // Read the byte containing this pixel
+      uint8_t font_byte = pgm_read_byte(&font->table[row_offset + byte_index]);
+      
+      // Check if the bit is set
+      pixel_set = (font_byte & (1 << bit_in_byte)) != 0;
+      
+      if (pixel_set) {
+        TFT_display.drawPixel(x + col, y + row, color);
+      }
+    }
+  }
+}
+
+// Function to draw a string
+void drawString(int x, int y, const char* str, sFONT* font, uint16_t color) {
+  int current_x = x;
+  while (*str) {
+    drawChar(current_x, y, *str, font, color);
+    current_x += font->Width;
+    str++;
+  }
+}
+
+// Wrapper functions to match standard TFT library interface
+void setCursor(int x, int y) {
+  cursor_x = x;
+  cursor_y = y;
+}
+
+void setTextColor(uint16_t color) {
+  text_color = color;
+}
+
+void setFont(sFONT* font) {
+  current_font = font;
+}
+
+// Print functions
+void printChar(char c) {
+  drawChar(cursor_x, cursor_y, c, current_font, text_color);
+  cursor_x += current_font->Width;
+}
+
+void printString(const char* str) {
+  drawString(cursor_x, cursor_y, str, current_font, text_color);
+  cursor_x += strlen(str) * current_font->Width;
+}
+
+void printFloat(float value, int decimals) {
+  char buffer[20];
+  dtostrf(value, 0, decimals, buffer);
+  printString(buffer);
+}
+
+void println() {
+  cursor_x = 0;
+  cursor_y += current_font->Height;
+}
+
+void setup() {
+
+  Serial.println(F("Arduino TFT Touch LCD Display - show text and float number"));
+
+  TFT_display.begin();
+
+  // Set the rotation (0 to 3)
+  TFT_display.setRotation(3);  // Rotate screen 90 degrees
+  TFT_display.fillScreen(BLACK);
+
+  // Set text color and custom font (can use Font8, Font16, Font20, or Font24)
+  setTextColor(WHITE);
+  setFont(&Font24);
+
+  // Sample temperature value
+  float temperature = 23.5;
+  float humidity = 78.6;
+
+  // Display temperature with degree symbol
+  setCursor(20, 20);    // Set cursor position (x, y)
+  printString("Temperature: ");
+  printFloat(temperature, 1);  // Print temperature with 1 decimal place
+  printChar(char(247));  // Degree symbol
+  printString("C");
+  println();
+
+  // Display humidity
+  setCursor(20, 60);    // Set cursor position (x, y)
+  printString("Humidity: ");
+  printFloat(humidity, 1);   // Print humidity with 1 decimal place
+  printString("%");
+}
+
+void loop(void) {
+}

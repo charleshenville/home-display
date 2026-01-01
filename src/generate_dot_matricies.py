@@ -6,7 +6,7 @@ mono = "FragmentMono-Regular.ttf"
 js = "JoganSoft-Regular.ttf"
 dd = "Daydream.ttf"
 
-def get_dot_matrix(characters, font_path='./fonts/'+dd, font_size=32, spread=2):
+def get_dot_matrix(characters, font_path=__name__.replace("generate_dot_matricies.py", './fonts/'+dd), font_size=32, spread=2):
     
     font = ImageFont.truetype(font_path, font_size)
 
@@ -58,7 +58,7 @@ if __name__ == "__main__":
     for stri in strs_to_generate:
         char_to_matrix_map[stri] = get_dot_matrix(stri)
 
-    with open("./generated_matricies/gen.txt", 'w') as file:
+    with open(__name__.replace("generate_dot_matricies.py", "../generated_matricies/gen.txt"), 'w') as file:
         file.write(str(char_to_matrix_map))
     # with open("./generated_matricies/gen.txt", 'r') as file:
     #     tx = file.read()
