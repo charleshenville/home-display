@@ -20,7 +20,7 @@
 DIYables_TFT_ILI9488_Shield TFT_display;
 
 // Current font settings
-sFONT* current_font = &Font24;  // Default font (can change to Font8, Font16, Font20, or Font24)
+sFONT* current_font = &Font8;  // Default font (can change to Font8, Font16, Font20, or Font8)
 uint16_t text_color = WHITE;
 int cursor_x = 0;
 int cursor_y = 0;
@@ -127,11 +127,11 @@ void setup() {
 
   // Set the rotation (0 to 3)
   TFT_display.setRotation(3);  // Rotate screen 90 degrees
-  TFT_display.fillScreen(BLACK);
+  TFT_display.fillScreen(WHITE);
 
-  // Set text color and custom font (can use Font8, Font16, Font20, or Font24)
-  setTextColor(WHITE);
-  setFont(&Font24);
+  // Set text color and custom font (can use Font8, Font16, Font20, or Font8)
+  setTextColor(BLACK);
+  setFont(&Font8);
 
   // Sample temperature value
   float temperature = 23.5;
@@ -189,7 +189,7 @@ void updateBreathingCircle(int current_radius) {
       
       // Only update pixels that changed state
       if (should_be_on != was_on) {
-        TFT_display.drawPixel(x, y, should_be_on ? WHITE : BLACK);
+        TFT_display.drawPixel(x, y, should_be_on ? BLACK : WHITE);
       }
     }
   }
