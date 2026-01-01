@@ -11,6 +11,7 @@
 #include <DIYables_TFT_Touch_Shield.h>
 #include "fonts.h"
 #include <string.h>
+#include <math.h>
 
 #define MAGENTA   DIYables_TFT::colorRGB(255, 0, 255)
 #define WHITE     DIYables_TFT::colorRGB(255, 255, 255)
@@ -23,6 +24,16 @@ sFONT* current_font = &Font24;  // Default font (can change to Font8, Font16, Fo
 uint16_t text_color = WHITE;
 int cursor_x = 0;
 int cursor_y = 0;
+
+// Breathing circle animation variables
+int circle_center_x = 0;
+int circle_center_y = 0;
+int prev_radius = 0;
+unsigned long last_animation_time = 0;
+const unsigned long animation_interval = 20;  // Update every 20ms for smooth animation
+const int min_radius = 20;
+const int max_radius = 50;
+const float breathing_speed = 0.002;  // Speed of breathing animation
 
 // Function to draw a single character using sFONT format
 void drawChar(int x, int y, char c, sFONT* font, uint16_t color) {
@@ -139,7 +150,67 @@ void setup() {
   printString("Humidity: ");
   printFloat(humidity, 1);   // Print humidity with 1 decimal place
   printString("%");
+
+  // Calculate center of screen for breathing circle
+  circle_center_x = TFT_display.width() / 2;
+  circle_center_y = TFT_display.height() / 2;
+  
+  last_animation_time = millis();
+}
+
+// Function to update breathing circle by only changing pixels that need to change
+void updateBreathingCircle(int current_radius) {
+  // Calculate bounding box around the circle (only need to check pixels within max_radius)
+  int min_x = circle_center_x - max_radius;
+  int max_x = circle_center_x + max_radius;
+  int min_y = circle_center_y - max_radius;
+  int max_y = circle_center_y + max_radius;
+  
+  // Clamp to screen bounds
+  min_x = (min_x < 0) ? 0 : min_x;
+  max_x = (max_x > TFT_display.width() - 1) ? TFT_display.width() - 1 : max_x;
+  min_y = (min_y < 0) ? 0 : min_y;
+  max_y = (max_y > TFT_display.height() - 1) ? TFT_display.height() - 1 : max_y;
+  
+  // Iterate through pixels in bounding box
+  for (int y = min_y; y <= max_y; y++) {
+    for (int x = min_x; x <= max_x; x++) {
+      // Calculate distance from center (using integer math for speed)
+      int dx = x - circle_center_x;
+      int dy = y - circle_center_y;
+      // Use squared distance to avoid sqrt calculation
+      int dist_squared = dx * dx + dy * dy;
+      int current_radius_squared = current_radius * current_radius;
+      int prev_radius_squared = prev_radius * prev_radius;
+      
+      // Determine if pixel should be on or off based on current radius
+      bool should_be_on = (dist_squared <= current_radius_squared);
+      bool was_on = (prev_radius > 0 && dist_squared <= prev_radius_squared);
+      
+      // Only update pixels that changed state
+      if (should_be_on != was_on) {
+        TFT_display.drawPixel(x, y, should_be_on ? WHITE : BLACK);
+      }
+    }
+  }
 }
 
 void loop(void) {
+  // Animate the breathing circle
+  unsigned long current_time = millis();
+  
+  if (current_time - last_animation_time >= animation_interval) {
+    // Calculate breathing radius using sine wave for smooth animation
+    float time_factor = current_time * breathing_speed;
+    float sine_value = sin(time_factor);
+    
+    // Map sine wave (-1 to 1) to radius range (min_radius to max_radius)
+    int current_radius = min_radius + (int)((sine_value + 1.0) * 0.5 * (max_radius - min_radius));
+    
+    // Update circle by only changing pixels that need to change
+    updateBreathingCircle(current_radius);
+    
+    prev_radius = current_radius;
+    last_animation_time = current_time;
+  }
 }
