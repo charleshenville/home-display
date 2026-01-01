@@ -37,11 +37,15 @@ const float breathing_speed = 0.002;  // Speed of breathing animation
 
 // Optimized animation state tracking
 char prev_text[32] = "";  // Store previous text string
+char prev_date_text[64] = "";  // Store previous date text string
 float prev_time_param = 0.0;  // Store previous time parameter
 int prev_text_center_x = 0;
 int prev_text_center_y = 0;
 int prev_text_width = 0;
 int prev_text_height = 0;
+int prev_date_center_x = 0;
+int prev_date_center_y = 0;
+int prev_date_width = 0;
 
 // Breathing circle font variables
 const int BREATHING_FONT_MAX_RADIUS = 4;  // Maximum radius for breathing circles (controls spacing)
@@ -362,11 +366,15 @@ void setup() {
 
   // Initialize previous text state
   prev_text[0] = '\0';
+  prev_date_text[0] = '\0';
   prev_time_param = 0.0;
   prev_text_center_x = 0;
   prev_text_center_y = 0;
   prev_text_width = 0;
   prev_text_height = 0;
+  prev_date_center_x = 0;
+  prev_date_center_y = 0;
+  prev_date_width = 0;
   
   last_animation_time = millis();
 }
@@ -522,45 +530,79 @@ void loop(void) {
   if (current_time - last_animation_time >= animation_interval) {
     // Get current text (in a real implementation, this would be the actual time)
     const char* time_str = "17:38";
+    const char* date_str = "January 1, 2026 UTC -5.0";
+    
     int spacing = 2 * BREATHING_FONT_MAX_RADIUS;
-    int text_width = strlen(time_str) * Font16.Width * spacing;
-    int text_height = Font16.Height * spacing;
-    int center_x = (TFT_display.width() - text_width) / 2;
-    int center_y = (TFT_display.height() - text_height) / 2;
+    int time_width = strlen(time_str) * Font16.Width * spacing;
+    int time_height = Font16.Height * spacing;
+    int date_width = strlen(date_str) * Font24.Width;
+    int date_height = Font24.Height;
+    
+    // Calculate total combined height with spacing between time and date
+    int spacing_between = 20;  // Space between time and date
+    int total_height = time_height + spacing_between + date_height;
+    
+    // Center the combined content vertically
+    int combined_start_y = (TFT_display.height() - total_height) / 2;
+    int time_center_y = combined_start_y;
+    int date_center_y = combined_start_y + time_height + spacing_between;
+    
+    // Center both horizontally
+    int time_center_x = (TFT_display.width() - time_width) / 2;
+    int date_center_x = (TFT_display.width() - date_width) / 2;
     
     float time_param = current_time / 1000.0;  // Convert to seconds
     
-    // Check if text has changed
+    // Check if text or date has changed
     bool text_changed = (strcmp(time_str, prev_text) != 0);
+    bool date_changed = (strcmp(date_str, prev_date_text) != 0);
     
-    if (text_changed) {
-      // Text changed - need to clear old area and draw new text structure
-      // Clear previous text area if it exists
+    if (text_changed || date_changed) {
+      // Text or date changed - need to clear old areas and draw new content
+      int padding = BREATHING_FONT_MAX_RADIUS * 2;
+      
+      // Clear previous time area if it exists
       if (strlen(prev_text) > 0) {
-        int padding = BREATHING_FONT_MAX_RADIUS * 2;
         TFT_display.fillRect(prev_text_center_x - padding, prev_text_center_y - padding,
                              prev_text_width + padding * 2, prev_text_height + padding * 2, WHITE);
       }
       
-      // Clear new text area
-      int padding = BREATHING_FONT_MAX_RADIUS * 2;
-      TFT_display.fillRect(center_x - padding, center_y - padding,
-                           text_width + padding * 2, text_height + padding * 2, WHITE);
+      // Clear previous date area if it exists
+      if (strlen(prev_date_text) > 0) {
+        TFT_display.fillRect(prev_date_center_x, prev_date_center_y,
+                             prev_date_width, Font24.Height, WHITE);
+      }
       
-      // Draw new text structure (all circles at initial state)
-      drawStringBreathing(center_x, center_y, time_str, &Font16, BLACK, time_param);
+      // Clear new time area
+      TFT_display.fillRect(time_center_x - padding, time_center_y - padding,
+                           time_width + padding * 2, time_height + padding * 2, WHITE);
+      
+      // Clear new date area
+      TFT_display.fillRect(date_center_x, date_center_y,
+                           date_width, date_height, WHITE);
+      
+      // Draw new time structure (all circles at initial state)
+      drawStringBreathing(time_center_x, time_center_y, time_str, &Font16, BLACK, time_param);
+      
+      // Draw new date text
+      drawString(date_center_x, date_center_y, date_str, &Font24, BLACK);
       
       // Update tracking variables
       strncpy(prev_text, time_str, sizeof(prev_text) - 1);
       prev_text[sizeof(prev_text) - 1] = '\0';
-      prev_text_center_x = center_x;
-      prev_text_center_y = center_y;
-      prev_text_width = text_width;
-      prev_text_height = text_height;
+      strncpy(prev_date_text, date_str, sizeof(prev_date_text) - 1);
+      prev_date_text[sizeof(prev_date_text) - 1] = '\0';
+      prev_text_center_x = time_center_x;
+      prev_text_center_y = time_center_y;
+      prev_text_width = time_width;
+      prev_text_height = time_height;
+      prev_date_center_x = date_center_x;
+      prev_date_center_y = date_center_y;
+      prev_date_width = date_width;
       prev_time_param = time_param;
     } else {
       // Text unchanged - only update breathing circles efficiently
-      updateBreathingText(center_x, center_y, time_str, &Font16, BLACK, prev_time_param, time_param);
+      updateBreathingText(time_center_x, time_center_y, time_str, &Font16, BLACK, prev_time_param, time_param);
       prev_time_param = time_param;
     }
     
